@@ -64,7 +64,6 @@ function setHero(lamp: number): void {
   canvas.classList.toggle("grab", lamp >= 0);
 }
 
-const MAX_ROT = 2.4;
 let heroRot = 0;
 let heroRotVel = 0;
 let dragging = false;
@@ -92,12 +91,8 @@ canvas.addEventListener("pointermove", (e) => {
   const dtms = Math.max(now - dragLastT, 1);
   if (Math.abs(e.clientX - dragStartX) > 5) dragMoved = true;
   if (Math.abs(dx) > 0) {
-    let dRot = dx * 0.011;
-    const over = Math.abs(heroRot) / MAX_ROT;
-    if (over > 0.85 && Math.sign(dRot) === Math.sign(heroRot)) {
-      dRot *= Math.max(1 - (over - 0.85) / 0.15, 0.1);
-    }
-    heroRot = Math.min(MAX_ROT, Math.max(-MAX_ROT, heroRot + dRot));
+    const dRot = dx * 0.011;
+    heroRot += dRot;
     const inst = (dRot / dtms) * 1000;
     heroRotVel = heroRotVel * 0.6 + inst * 0.4;
   }
@@ -281,10 +276,6 @@ function frame(now: number): void {
   if (!dragging && heroLamp >= 0 && Math.abs(heroRotVel) > 1e-4) {
     heroRot += heroRotVel * dt;
     heroRotVel *= Math.exp(-dt * 3.2);
-    if (heroRot >= MAX_ROT || heroRot <= -MAX_ROT) {
-      heroRot = Math.min(MAX_ROT, Math.max(-MAX_ROT, heroRot));
-      heroRotVel *= -0.25;
-    }
   }
 
   const k = 1 - Math.exp(-dt * 6);
