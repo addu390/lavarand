@@ -1,5 +1,5 @@
 import "./style.css";
-import { defaultParams, MAX_BLOBS } from "./params";
+import { defaultParams, CELL_ASPECT, MAX_BLOBS } from "./params";
 import { LampWall } from "./lamps/lamp";
 import { advance } from "./lamps/physics";
 import { Renderer, type Camera } from "./lamps/renderer";
@@ -7,12 +7,35 @@ import { EntropyCamera } from "./entropy/camera";
 import { FrameJitterSource, attachMouseSource } from "./entropy/sources";
 import { Sidebar } from "./ui/sidebar";
 import { AdminPanel } from "./ui/admin";
+import { initDock } from "./ui/dock";
 
 const params = defaultParams();
 const canvas = document.getElementById("wall") as HTMLCanvasElement;
 const renderer = new Renderer(canvas);
 
-let wall = new LampWall(params, renderer.aspect);
+const MAX_LAMPS = 480;
+
+function fillGrid(): { cols: number; rows: number } {
+  const rows = Math.max(1, Math.round(params.shelves));
+  const cellH = window.innerHeight / rows;
+  let cols = Math.max(1, Math.floor(window.innerWidth / (cellH * CELL_ASPECT)));
+  cols = Math.min(cols, Math.floor(MAX_LAMPS / rows));
+  return { cols, rows };
+}
+
+function syncLampCount(): void {
+  if (params.fillScreen) {
+    const g = fillGrid();
+    params.lampCount = g.cols * g.rows;
+  }
+}
+
+syncLampCount();
+let wall = new LampWall(
+  params,
+  renderer.aspect,
+  params.fillScreen ? fillGrid() : undefined,
+);
 
 const cam: Camera = { x: 0, y: 0, w: wall.cols, h: wall.rows };
 let camTarget: Camera = { ...cam };
@@ -61,7 +84,11 @@ const admin = new AdminPanel(document.getElementById("admin-root")!, params, {
       admin.setFastForwarding(true);
     }
   },
-  onLampCount: rebuildWall,
+  onLampCount() {
+    syncLampCount();
+    rebuildWall();
+    admin.refreshLampCount();
+  },
   onBlobs() {
     wall.applyBlobCount(params);
   },
@@ -84,6 +111,7 @@ const admin = new AdminPanel(document.getElementById("admin-root")!, params, {
   onReset() {
     admin.resetParams();
     applyRoomMode();
+    syncLampCount();
     rebuildWall();
   },
   allOn() {
@@ -91,9 +119,15 @@ const admin = new AdminPanel(document.getElementById("admin-root")!, params, {
   },
 });
 
+initDock();
+
 function rebuildWall(): void {
   const old = wall;
-  wall = new LampWall(params, renderer.aspect);
+  wall = new LampWall(
+    params,
+    renderer.aspect,
+    params.fillScreen ? fillGrid() : undefined,
+  );
 
   const n = Math.min(old.count, wall.count);
   for (let i = 0; i < n; i++) {
@@ -149,8 +183,17 @@ window.addEventListener("keydown", (e) => {
 
 window.addEventListener("resize", () => {
   renderer.resize();
-  wall.layout(renderer.aspect);
-  wall.applyTheme(params);
+  if (params.fillScreen) {
+    const g = fillGrid();
+    if (g.cols !== wall.cols || g.rows !== wall.rows) {
+      params.lampCount = g.cols * g.rows;
+      rebuildWall();
+      admin.refreshLampCount();
+    }
+  } else {
+    wall.layout(renderer.aspect);
+    wall.applyTheme(params);
+  }
   camTarget = heroLamp >= 0 ? heroCam(heroLamp) : wallCam();
 });
 

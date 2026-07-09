@@ -12,6 +12,7 @@ export class LampWall {
   lampData: Float32Array;
 
   on: Uint8Array;
+  bulb: Float32Array;
   warmth: Float32Array;
   activeTime: Float32Array;
   seed: Float32Array;
@@ -26,7 +27,11 @@ export class LampWall {
   blobPhase: Float32Array;
   mergeCooldown: Float32Array;
 
-  constructor(params: Params, viewportAspect: number) {
+  constructor(
+    params: Params,
+    viewportAspect: number,
+    grid?: { cols: number; rows: number },
+  ) {
     this.count = params.lampCount;
     const n = this.count;
     const nb = n * MAX_BLOBS;
@@ -34,6 +39,7 @@ export class LampWall {
     this.blobB = new Float32Array(nb * 4);
     this.lampData = new Float32Array(n * 4 * 2);
     this.on = new Uint8Array(n);
+    this.bulb = new Float32Array(n);
     this.warmth = new Float32Array(n);
     this.activeTime = new Float32Array(n);
     this.seed = new Float32Array(n);
@@ -46,7 +52,12 @@ export class LampWall {
     this.blobPhase = new Float32Array(nb);
     this.mergeCooldown = new Float32Array(n);
 
-    this.layout(viewportAspect);
+    if (grid) {
+      this.cols = grid.cols;
+      this.rows = grid.rows;
+    } else {
+      this.layout(viewportAspect);
+    }
     this.initLamps(params);
     this.applyTheme(params);
   }
@@ -67,6 +78,7 @@ export class LampWall {
       this.setJitters(i, r, params.variance);
       this.blobCount[i] = pickBlobCount(r, params);
       this.on[i] = 1;
+      this.bulb[i] = 1;
       this.warmth[i] = 1;
       this.activeTime[i] = 30 + r() * 40;
       this.initBlobs(i, params, r);
@@ -190,10 +202,12 @@ export class LampWall {
   }
 
   syncLampData() {
+    const liqRow = this.count * 4;
     for (let i = 0; i < this.count; i++) {
       this.lampData[i * 4] = this.warmth[i];
       this.lampData[i * 4 + 2] = this.on[i];
       this.lampData[i * 4 + 3] = this.seed[i];
+      this.lampData[liqRow + i * 4 + 3] = this.bulb[i];
     }
   }
 

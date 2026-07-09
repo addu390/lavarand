@@ -89,7 +89,8 @@ vec3 roomColor(vec2 wallP, float inGridY) {
   vec3 dark = vec3(0.047, 0.043, 0.058) * (1.05 - 0.35 * g) * inGridY;
   dark += vec3(0.02, 0.018, 0.026) * vnoise(wallP * 5.0) * 0.5;
 
-  vec3 lite = vec3(0.979, 0.975, 0.963);
+  vec3 lite = vec3(0.952, 0.948, 0.936) * (1.0 - 0.04 * g);
+  lite += vec3(0.018) * vnoise(wallP * 5.0);
   return mix(dark, lite, uLight);
 }
 
@@ -97,11 +98,9 @@ vec3 shelfWood(vec2 wallP, vec2 q) {
   float grain = vnoise(vec2(wallP.x * 2.4, floor(wallP.y) * 13.7 + q.y * 90.0));
   float fine = vnoise(vec2(wallP.x * 40.0, floor(wallP.y) * 7.0));
 
-  vec3 tone = mix(vec3(0.20, 0.117, 0.062), vec3(0.80, 0.76, 0.70), uLight);
-  float grainAmt = mix(0.34, 0.08, uLight);
-  vec3 wood = tone * (mix(0.72, 0.88, uLight) + grainAmt * grain) *
-              (mix(0.9, 0.97, uLight) + mix(0.2, 0.06, uLight) * fine);
-  wood += tone * mix(0.5, 0.15, uLight) * ss(SHELF_H - 0.012, SHELF_H, q.y);
+  vec3 tone = vec3(0.20, 0.117, 0.062) * mix(1.0, 2.8, uLight);
+  vec3 wood = tone * (0.72 + 0.34 * grain) * (0.9 + 0.2 * fine);
+  wood += tone * 0.5 * ss(SHELF_H - 0.012, SHELF_H, q.y);
   return wood;
 }
 
@@ -132,18 +131,21 @@ void main() {
     float hue = lamp.y;
     float switchedOn = lamp.z;
     float seed = lamp.w;
-    vec3 liquidCol = texelFetch(uLamp, ivec2(lampIdx, 1), 0).rgb;
+    vec4 lamp2 = texelFetch(uLamp, ivec2(lampIdx, 1), 0);
+    vec3 liquidCol = lamp2.rgb;
+    float bulbLit = lamp2.a;
 
     vec3 waxCore = hsv2rgb(vec3(hue, 0.72, 1.05));
     vec3 waxMid  = hsv2rgb(vec3(hue, 0.88, 0.92));
     vec3 waxRim  = hsv2rgb(vec3(hue, 0.95, 0.55));
-    float glowAmt = warmth * uGlow;
+    float glowAmt = bulbLit * uGlow * (1.0 - 0.8 * uLight);
+    float lit = mix(mix(0.60, 0.93, uLight), 1.0, bulbLit);
 
     vec2 bulbXY = vec2(0.0, INT_BOT - 0.01);
 
     if (q.y < SHELF_H + 0.02) {
       float sh = exp(-(q.x * q.x * 120.0 + pow((q.y - 0.045) * 10.0, 2.0)));
-      col *= 1.0 - 0.55 * sh;
+      col *= 1.0 - mix(0.55, 0.30, uLight) * sh;
       col += waxMid * 0.12 * glowAmt *
              exp(-(q.x * q.x * 30.0 + pow((q.y - SHELF_H) * 7.0, 2.0)));
     } else {
@@ -157,6 +159,12 @@ void main() {
     float aaq = fwidth(q.y) + 1e-4;
     bool insideLamp = q.y > FOOT_BOT && q.y < CAP_TOP && ax < hw + aaq;
 
+    if (!insideLamp && q.y > BASE_TOP && q.y < GLASS_TOP + 0.03) {
+      float d = max(ax - hw, 0.0);
+      float fall = 0.55 + 0.45 * exp(-(q.y - BASE_TOP) * 3.5);
+      col += waxMid * glowAmt * 0.085 * exp(-d * 60.0) * fall;
+    }
+
     if (insideLamp) {
       float edgeAA = ss(hw + aaq, hw - aaq, ax);
       vec3 lampCol;
@@ -168,7 +176,10 @@ void main() {
         float centerGlow = pow(max(1.0 - xn * xn, 0.0), 1.1);
         float att = exp(-(q.y - INT_BOT) * 1.8);
 
-        vec3 liq = liquidCol * (0.85 + 0.2 * centerGlow + 0.12 * att * glowAmt);
+        vec3 liq = liquidCol *
+                   (0.85 + 0.32 * uLight + 0.2 * centerGlow + 0.32 * att * glowAmt);
+        liq += vec3(1.0, 0.86, 0.62) * 0.05 * att * glowAmt * centerGlow;
+        liq *= lit;
 
         vec2 qb = q - bulbXY;
         liq += waxCore * glowAmt * 0.14 * exp(-dot(qb, qb) * 140.0);
@@ -205,8 +216,21 @@ void main() {
           if (wax > 0.003) {
             vec3 waxBody = mix(waxMid, waxCore, 0.35 + 0.4 * heatL);
             waxBody = mix(waxRim, waxBody, 0.82);
-            float light = 0.92 + 0.08 * glowAmt;
-            lampCol = mix(lampCol, waxBody * light, wax);
+
+            vec2 gf = vec2(dFdx(f), dFdy(f));
+            vec3 n = normalize(vec3(-gf, max(length(gf), 0.03) * 2.2));
+            vec3 L = normalize(vec3(-0.3, 0.6, 0.72));
+            float diff = 0.80 + 0.20 * max(dot(n, L), 0.0);
+            float spec =
+                pow(max(dot(n, normalize(L + vec3(0.0, 0.0, 1.0))), 0.0), 28.0);
+
+            float back = glowAmt * exp(-(q.y - INT_BOT) * 2.6);
+            vec3 shaded = waxBody * diff;
+            shaded += waxCore * back * 0.16;
+            shaded += vec3(1.0) * spec * 0.05 * (1.0 - 0.7 * uLight);
+
+            float light = (0.92 + 0.08 * glowAmt) * lit;
+            lampCol = mix(lampCol, shaded * light, wax);
           }
         }
 
@@ -215,13 +239,22 @@ void main() {
         float rim = exp(-(hw - ax) * 110.0);
         lampCol += vec3(0.75, 0.82, 0.92) * rim * (0.12 + 0.18 * glowAmt);
 
-        float s1 = exp(-pow(q.x + hw * 0.48, 2.0) * 4200.0);
-        lampCol += vec3(1.0) * s1 * (0.04 + 0.10 * glowAmt) *
+        float wob = vnoise(vec2(seed * 91.0, q.y * 11.0));
+        float sx = q.x + hw * 0.48 + (wob - 0.5) * 0.006;
+        float s1 = exp(-sx * sx * 2400.0);
+        float streak = 0.55 + 0.45 * vnoise(vec2(q.y * 7.0, seed * 53.0));
+        lampCol += vec3(1.0) * s1 * (0.025 + 0.065 * glowAmt) * streak *
                    ss(BASE_TOP, BASE_TOP + 0.06, q.y) *
                    (1.0 - ss(GLASS_TOP - 0.05, GLASS_TOP, q.y));
+
+        float extTop = ss(BASE_TOP, GLASS_TOP, q.y);
+        float sheenB = exp(-pow(xn + 0.42, 2.0) * 2.6);
+        lampCol *= 1.0 + uLight * (0.04 + 0.10 * extTop);
+        lampCol += vec3(1.0) * uLight * sheenB * 0.06;
       } else {
         float m = ax / hw;
-        lampCol = silver(m, q.y, seed);
+        lampCol = silver(m, q.y, seed) * (1.0 + 0.2 * uLight) *
+                  mix(mix(0.88, 0.99, uLight), 1.0, bulbLit);
 
         if (q.y < BASE_TOP) {
           lampCol *= 1.0 - 0.35 * exp(-pow((q.y - WAIST_Y) * 80.0, 2.0));
@@ -253,6 +286,10 @@ void main() {
                      (1.0 - ss(GLASS_TOP, GLASS_TOP + 0.05, q.y));
         }
       }
+
+      float lum = dot(lampCol, vec3(0.299, 0.587, 0.114));
+      lampCol = mix(lampCol, vec3(lum), 0.13 * uLight);
+      lampCol = lampCol * (1.0 - 0.06 * uLight) + 0.055 * uLight;
 
       col = mix(col, lampCol, edgeAA);
     }

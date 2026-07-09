@@ -24,14 +24,20 @@ export class EntropyCamera {
   afterRender(nowMs: number): void {
     const interval = this.params.captureIntervalSec * 1000;
 
-    if (this.nextCapture === 0) this.nextCapture = nowMs + 1500;
-    if (nowMs >= this.nextCapture) {
-      this.pending = true;
-      this.nextCapture = nowMs + interval;
+    if (!this.params.captureEnabled) {
+      this.nextCapture = 0;
+      this.sidebar.setPaused(true);
+    } else {
+      if (this.nextCapture === 0) this.nextCapture = nowMs + 1500;
+      if (nowMs >= this.nextCapture) {
+        this.pending = true;
+        this.nextCapture = nowMs + interval;
+      }
+      this.sidebar.setPaused(false);
+      this.sidebar.setCountdown(
+        1 - Math.max(0, this.nextCapture - nowMs) / interval,
+      );
     }
-    this.sidebar.setCountdown(
-      1 - Math.max(0, this.nextCapture - nowMs) / interval,
-    );
 
     if (!this.pending || this.busy) return;
     this.pending = false;

@@ -32,6 +32,9 @@ function stepLamp(
   p: Params,
   t: number,
 ): void {
+  const bulbTarget = wall.on[lamp] ? 1 : 0;
+  wall.bulb[lamp] += (bulbTarget - wall.bulb[lamp]) * Math.min(1, 5 * dt);
+
   const warmRate = 1 / Math.max(5, p.warmupSec);
   if (wall.on[lamp]) {
     wall.warmth[lamp] = Math.min(1, wall.warmth[lamp] + warmRate * dt);
@@ -82,12 +85,13 @@ function stepLamp(
     const heatGain = 0.9 * heatMul * drive * bulbZone * (1 - heat);
     let heatLoss = 0.025 * heat * smoothstep(0.25, 0.5, y);
 
-    if (y > 0.8) heatLoss += (y - 0.8) * 0.5 * heat;
+    if (y > 0.8) heatLoss += (y - 0.8) * 0.3 * heat;
     heat = clamp(heat + (heatGain - heatLoss) * dt, 0, 1);
 
     if (b === 0) heat = Math.min(heat, 0.48);
 
-    const ay = buoyMul * drive * (heat - 0.5) * 1.5;
+    let ay = buoyMul * drive * (heat - 0.5) * 1.5;
+    if (y > 0.82 && heat > 0.42 && ay < 0) ay *= 0.15;
     const phase = wall.blobPhase[i];
     const ax =
       Math.sin(t * 0.2 + phase) * 0.01 +

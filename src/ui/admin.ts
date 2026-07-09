@@ -68,6 +68,14 @@ const SLIDERS: { section: string; items: SliderDef[] }[] = [
     section: "Appearance",
     items: [
       {
+        key: "shelves",
+        label: "Shelves",
+        min: 2,
+        max: 8,
+        step: 1,
+        onChange: "lamps",
+      },
+      {
         key: "lampCount",
         label: "Lamp count",
         min: 24,
@@ -85,15 +93,17 @@ const SLIDERS: { section: string; items: SliderDef[] }[] = [
         key: "captureIntervalSec",
         label: "Capture interval",
         min: 2,
-        max: 60,
+        max: 300,
         step: 1,
-        format: (v) => `${v}s`,
+        format: (v) =>
+          v >= 60 ? `${Math.floor(v / 60)}m${v % 60 ? ` ${v % 60}s` : ""}` : `${v}s`,
       },
     ],
   },
 ];
 
 const TOGGLES: { key: keyof Params; label: string }[] = [
+  { key: "captureEnabled", label: "Auto capture" },
   { key: "srcLamps", label: "Lamp pixels" },
   { key: "srcJitter", label: "Frame jitter" },
   { key: "srcMouse", label: "Mouse noise" },
@@ -104,23 +114,22 @@ export class AdminPanel {
   private root: HTMLElement;
   private ffBtn!: HTMLButtonElement;
   private masterBtn!: HTMLButtonElement;
+  private lampKnob: {
+    wrap: HTMLElement;
+    input: HTMLInputElement;
+    val: Element;
+    setFill: () => void;
+  } | null = null;
+  private shelvesKnob: HTMLElement | null = null;
 
   constructor(
     container: HTMLElement,
     private params: Params,
     private actions: AdminActions,
   ) {
-    container.innerHTML = `
-      <button class="admin-toggle">Controls</button>
-      <div class="admin-drawer" hidden></div>
-    `;
-    this.root = container.querySelector(".admin-drawer")!;
-    const toggleBtn =
-      container.querySelector<HTMLButtonElement>(".admin-toggle")!;
-    toggleBtn.addEventListener("click", () => {
-      this.root.hidden = !this.root.hidden;
-      toggleBtn.classList.toggle("open", !this.root.hidden);
-    });
+    this.root = document.createElement("div");
+    this.root.className = "admin-drawer";
+    container.appendChild(this.root);
     this.build();
   }
 
@@ -152,6 +161,9 @@ export class AdminPanel {
       const sec = document.createElement("div");
       sec.className = "admin-section";
       sec.innerHTML = `<h3>${group.section}</h3>`;
+      if (group.section === "Appearance") {
+        sec.appendChild(this.fillScreenToggle());
+      }
       for (const def of group.items) sec.appendChild(this.slider(def));
       if (group.section === "Physics") {
         sec.appendChild(
@@ -260,6 +272,14 @@ export class AdminPanel {
       fill.style.width = `${pct}%`;
     };
     setFill();
+    if (def.key === "lampCount") {
+      this.lampKnob = { wrap, input, val: valEl, setFill };
+      this.syncLampKnob();
+    }
+    if (def.key === "shelves") {
+      this.shelvesKnob = wrap;
+      this.syncLampKnob();
+    }
     input.addEventListener("input", () => {
       const v = parseFloat(input.value);
       (this.params[def.key] as number) = v;
@@ -270,6 +290,38 @@ export class AdminPanel {
       if (def.onChange === "variance") this.actions.onVariance();
     });
     return wrap;
+  }
+
+  private fillScreenToggle(): HTMLElement {
+    const wrap = document.createElement("label");
+    wrap.className = "knob toggle";
+    wrap.innerHTML = `
+      <span class="knob-label">Fill screen</span>
+      <input type="checkbox" ${this.params.fillScreen ? "checked" : ""}>
+    `;
+    wrap.querySelector("input")!.addEventListener("change", (e) => {
+      this.params.fillScreen = (e.target as HTMLInputElement).checked;
+      this.syncLampKnob();
+      this.actions.onLampCount();
+    });
+    return wrap;
+  }
+
+  private syncLampKnob(): void {
+    const auto = this.params.fillScreen;
+    if (this.lampKnob) {
+      this.lampKnob.input.disabled = auto;
+      this.lampKnob.wrap.classList.toggle("dimmed", auto);
+    }
+    this.shelvesKnob?.classList.toggle("dimmed", !auto);
+  }
+
+  refreshLampCount(): void {
+    if (!this.lampKnob) return;
+    const v = this.params.lampCount;
+    this.lampKnob.input.value = String(v);
+    this.lampKnob.val.textContent = String(v);
+    this.lampKnob.setFill();
   }
 
   private appearanceControls(sec: HTMLElement): void {

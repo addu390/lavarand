@@ -73,42 +73,89 @@ body:not(.light) #masthead h1 {
   font-family: var(--mono);
 }
 
-#panels-toggle {
+#dock {
   position: fixed;
   top: 16px;
   right: 16px;
   z-index: 10;
+  width: 324px;
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+}
+
+#dock-bar {
+  display: flex;
+  align-items: stretch;
   background: var(--panel-bg);
   border: 1px solid var(--panel-edge);
-  color: var(--text);
+  border-radius: 2px;
+  box-shadow: var(--shadow);
+  flex: none;
+}
+
+.dock-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  border-right: 1px solid var(--panel-edge);
+  color: var(--text-dim);
   font-family: var(--sans);
   font-size: 12px;
   font-weight: 500;
-  padding: 8px 16px;
-  border-radius: 2px;
+  padding: 9px 0;
   cursor: pointer;
-  box-shadow: var(--shadow);
 }
 
-#panels-toggle:hover,
-#panels-toggle.open {
-  border-color: var(--text-dim);
+.dock-tab.active {
+  color: var(--text);
+}
+
+.dock-tab:hover {
+  color: var(--text);
+}
+
+#dock:not(.collapsed) .dock-tab.active {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+#dock-collapse {
+  flex: 0 0 38px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+#dock-collapse.closed {
+  transform: rotate(-90deg);
+}
+
+#dock-collapse:hover {
+  color: var(--text);
+}
+
+#dock-views {
+  margin-top: 8px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  min-height: 0;
+}
+
+#dock.collapsed #dock-views {
+  display: none;
 }
 
 #sidebar {
-  position: fixed;
-  top: 54px;
-  right: 16px;
-  bottom: 16px;
-  width: 324px;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  scrollbar-width: thin;
 }
 
-#sidebar.hidden-all {
+#sidebar[hidden],
+#admin-root[hidden] {
   display: none;
 }
 
@@ -170,6 +217,24 @@ body:not(.light) #masthead h1 {
   border: 1px solid var(--panel-edge);
   display: block;
   background: #000;
+}
+
+.cam-wrap.paused .thumb {
+  filter: grayscale(0.9) brightness(0.65);
+}
+
+.cam-paused {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: #e4e4e7;
+  background: rgba(10, 10, 11, 0.72);
+  border: 1px solid rgba(228, 228, 231, 0.25);
+  border-radius: 2px;
+  padding: 3px 7px;
 }
 
 .countdown {
@@ -298,47 +363,12 @@ body:not(.light) #masthead h1 {
   }
 }
 
-#admin-root {
-  position: fixed;
-  left: 16px;
-  bottom: 16px;
-  display: flex;
-  flex-direction: column-reverse;
-  align-items: flex-start;
-  gap: 8px;
-  max-height: calc(100vh - 100px);
-}
-
-.admin-toggle {
-  background: var(--panel-bg);
-  border: 1px solid var(--panel-edge);
-  color: var(--text);
-  font-family: var(--sans);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0;
-  text-transform: none;
-  padding: 8px 16px;
-  border-radius: 2px;
-  cursor: pointer;
-  box-shadow: var(--shadow);
-}
-
-.admin-toggle:hover,
-.admin-toggle.open {
-  border-color: var(--text-dim);
-}
-
 .admin-drawer {
-  width: 306px;
   background: var(--panel-bg);
   border: 1px solid var(--panel-edge);
   border-radius: 2px;
   padding: 6px 14px 12px;
   box-shadow: var(--shadow);
-  overflow-y: auto;
-  max-height: calc(100vh - 170px);
-  scrollbar-width: thin;
 }
 
 .admin-section {
@@ -480,6 +510,11 @@ body:not(.light) #masthead h1 {
   font-family: var(--sans);
 }
 
+.knob.dimmed {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 .knob.toggle input {
   accent-color: var(--accent);
   width: 15px;
@@ -556,7 +591,52 @@ body:not(.light) #masthead h1 {
 }
 
 @media (max-width: 900px) {
-  #sidebar {
+  #dock {
+    top: auto;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    width: auto;
+    max-height: calc(100dvh - 80px);
+    flex-direction: column-reverse;
+  }
+
+  #dock-views {
+    margin-top: 0;
+    margin-bottom: 8px;
+    max-height: 55dvh;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .dock-tab,
+  #dock-collapse {
+    padding-top: 11px;
+    padding-bottom: 11px;
+  }
+
+  #dock:not(.collapsed) .dock-tab.active {
+    box-shadow: inset 0 2px 0 var(--accent);
+  }
+
+  #masthead {
+    top: 12px;
+    left: 14px;
+  }
+
+  #masthead h1 {
+    font-size: 13px;
+  }
+
+  #masthead p {
+    font-size: 10px;
+  }
+
+  #hero-hint {
     display: none;
+  }
+
+  .knob-label {
+    flex-basis: 96px;
   }
 }

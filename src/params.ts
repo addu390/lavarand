@@ -21,6 +21,8 @@ export type Matrix = "uniform" | "alternate" | "mix";
 export type RoomMode = "dark" | "light";
 
 export interface Params {
+  fillScreen: boolean;
+  shelves: number;
   lampCount: number;
   timeScale: number;
 
@@ -42,6 +44,7 @@ export interface Params {
   matrix: Matrix;
 
   mode: RoomMode;
+  captureEnabled: boolean;
   captureIntervalSec: number;
   srcLamps: boolean;
   srcJitter: boolean;
@@ -51,6 +54,8 @@ export interface Params {
 
 export function defaultParams(): Params {
   return {
+    fillScreen: true,
+    shelves: 4,
     lampCount: 96,
     timeScale: 1.8,
     warmupSec: 90,
@@ -66,7 +71,8 @@ export function defaultParams(): Params {
     themeB: "sunset",
     matrix: "alternate",
     mode: "dark",
-    captureIntervalSec: 10,
+    captureEnabled: true,
+    captureIntervalSec: 60,
     srcLamps: true,
     srcJitter: true,
     srcMouse: true,

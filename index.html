@@ -11,9 +11,17 @@
       <h1>LAVARAND WALL</h1>
       <p>simulated lava lamps &rarr; camera &rarr; SHA-256 &rarr; randomness</p>
     </header>
-    <button id="panels-toggle" class="open">Panels</button>
-    <aside id="sidebar"></aside>
-    <div id="admin-root"></div>
+    <div id="dock">
+      <div id="dock-bar">
+        <button class="dock-tab active" data-tab="panels">Panels</button>
+        <button class="dock-tab" data-tab="controls">Controls</button>
+        <button id="dock-collapse" aria-label="Toggle dock">&#9662;</button>
+      </div>
+      <div id="dock-views">
+        <aside id="sidebar" class="dock-view"></aside>
+        <div id="admin-root" class="dock-view" hidden></div>
+      </div>
+    </div>
     <div id="flash"></div>
     <div id="hero-hint" hidden>
       click outside the lamp or press Esc to close &middot; click the switch on

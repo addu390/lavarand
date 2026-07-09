@@ -18,6 +18,9 @@ const SOURCE_NAMES: Record<SourceLabel, string> = {
 
 export class Sidebar {
   private thumbCtx: CanvasRenderingContext2D;
+  private pausedEl: HTMLElement;
+  private camWrap: HTMLElement;
+  private paused = false;
   private digestEl: HTMLElement;
   private historyEl: HTMLElement;
   private outputsEl: HTMLElement;
@@ -32,6 +35,7 @@ export class Sidebar {
         <h2>Camera</h2>
         <div class="panel-body cam-wrap">
           <canvas class="thumb" width="288" height="162"></canvas>
+          <div class="cam-paused" hidden>capture paused</div>
           <div class="countdown"><div class="countdown-fill"></div></div>
         </div>
       </section>
@@ -65,14 +69,11 @@ export class Sidebar {
         h2.closest(".panel")!.classList.toggle("collapsed");
       });
     });
-    const panelsBtn = document.getElementById("panels-toggle");
-    panelsBtn?.addEventListener("click", () => {
-      const hidden = root.classList.toggle("hidden-all");
-      panelsBtn.classList.toggle("open", !hidden);
-    });
     this.thumbCtx = root
       .querySelector<HTMLCanvasElement>(".thumb")!
       .getContext("2d")!;
+    this.pausedEl = root.querySelector(".cam-paused")!;
+    this.camWrap = root.querySelector(".cam-wrap")!;
     this.digestEl = root.querySelector(".digest")!;
     this.historyEl = root.querySelector(".history")!;
     this.outputsEl = root.querySelector(".outputs")!;
@@ -106,6 +107,14 @@ export class Sidebar {
 
   setCountdown(frac: number): void {
     this.countdownEl.style.width = `${Math.min(1, Math.max(0, frac)) * 100}%`;
+  }
+
+  setPaused(paused: boolean): void {
+    if (paused === this.paused) return;
+    this.paused = paused;
+    this.pausedEl.hidden = !paused;
+    this.camWrap.classList.toggle("paused", paused);
+    if (paused) this.countdownEl.style.width = "0%";
   }
 
   blip(label: SourceLabel): void {
