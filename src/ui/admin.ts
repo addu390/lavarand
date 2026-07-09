@@ -128,7 +128,7 @@ export class AdminPanel {
     private actions: AdminActions,
   ) {
     this.root = document.createElement("div");
-    this.root.className = "admin-drawer";
+    this.root.className = "admin-drawer shell";
     container.appendChild(this.root);
     this.build();
   }

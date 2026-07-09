@@ -57,6 +57,7 @@ function stepLamp(
   const base = lamp * MAX_BLOBS;
   const A = wall.blobA;
   const B = wall.blobB;
+  const C = wall.blobC;
   const maxR = 0.13 * p.blobSize;
   const minR = 0.05 * p.blobSize;
 
@@ -106,16 +107,20 @@ function stepLamp(
       if (B[k2 + 2] < 0.5) continue;
       const dx = x - A[k2];
       const dy = y - A[k2 + 1];
-      const dist = Math.hypot(dx, dy) + 1e-5;
+      const dz = (C[k] - C[k2]) * 0.28;
+      const dist = Math.hypot(dx, dy, dz) + 1e-5;
       const need = (r + A[k2 + 2]) * 1.12;
       if (dist >= need) continue;
       const push = ((need - dist) / need) * 1.1 * dt;
       const fx = (dx / dist) * push;
       const fy = (dy / dist) * push * 0.65;
+      const fz = (dz / dist) * push * 1.6;
       vx += fx;
       vy += fy;
+      C[k + 1] += fz;
       B[k2] -= fx;
       B[k2 + 1] -= fy;
+      C[k2 + 1] -= fz;
     }
 
     const damp = Math.exp(-drag * dt);
@@ -150,6 +155,22 @@ function stepLamp(
       y = yMax;
       if (vy > 0) vy *= -0.05;
     }
+
+    let z = C[k];
+    let vz = C[k + 1];
+    vz += (Math.sin(t * 0.13 + phase * 2.3) * 0.012 - z * 0.05) * dt;
+    vz *= damp;
+    z += vz * dt;
+    const zMax = Math.sqrt(Math.max(xMax * xMax - x * x, 0.02));
+    if (z > zMax) {
+      z = zMax;
+      vz *= -0.2;
+    } else if (z < -zMax) {
+      z = -zMax;
+      vz *= -0.2;
+    }
+    C[k] = z;
+    C[k + 1] = vz;
 
     A[k] = x;
     A[k + 1] = y;
@@ -286,6 +307,8 @@ function spawnPool(wall: LampWall, lamp: number, b: number, p: Params): void {
   const k = i * 4;
   const rnd = fract(Math.sin(i * 91.7 + wall.seed[lamp] * 40));
   const tr = (0.11 + rnd * 0.02) * p.blobSize;
+  wall.blobC[k] = (rnd - 0.5) * 0.3;
+  wall.blobC[k + 1] = 0;
   wall.targetR[i] = tr;
   wall.blobPhase[i] = rnd * Math.PI * 2;
   wall.blobA[k] = (rnd - 0.5) * 0.2;
@@ -325,6 +348,8 @@ function launchFromPool(
 
   A[kf] = A[kp] + (Math.random() - 0.5) * 0.12;
   A[kf + 1] = A[kp + 1] + A[kp + 2] * 0.5;
+  wall.blobC[kf] = wall.blobC[kp] + (Math.random() - 0.5) * 0.2;
+  wall.blobC[kf + 1] = 0;
   A[kf + 2] = childR * 0.1;
   A[kf + 3] = 0.9;
   B[kf] = (Math.random() - 0.5) * 0.04;
@@ -366,6 +391,8 @@ function splitBlob(
 
   A[kf] = A[k] + side * parentR * 0.7;
   A[kf + 1] = A[k + 1] + 0.03;
+  wall.blobC[kf] = wall.blobC[k] + (Math.random() - 0.5) * 0.25;
+  wall.blobC[kf + 1] = (Math.random() - 0.5) * 0.02;
   A[kf + 2] = childR * 0.3;
   A[kf + 3] = A[k + 3] * 0.88;
   B[kf] = side * 0.04;
@@ -405,6 +432,8 @@ function mergeBlobs(
   A[kb + 3] = (A[kb + 3] * v1 + A[ks + 3] * v2) / vSum;
   B[kb] = (B[kb] * v1 + B[ks] * v2) / vSum;
   B[kb + 1] = (B[kb + 1] * v1 + B[ks + 1] * v2) / vSum;
+  wall.blobC[kb] =
+    (wall.blobC[kb] * v1 + wall.blobC[ks] * v2) / vSum;
   wall.targetR[big] = rNew;
   A[kb + 2] = rNew;
   B[ks + 2] = 0;

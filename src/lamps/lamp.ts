@@ -9,6 +9,7 @@ export class LampWall {
 
   blobA: Float32Array;
   blobB: Float32Array;
+  blobC: Float32Array;
   lampData: Float32Array;
 
   on: Uint8Array;
@@ -37,6 +38,7 @@ export class LampWall {
     const nb = n * MAX_BLOBS;
     this.blobA = new Float32Array(nb * 4);
     this.blobB = new Float32Array(nb * 4);
+    this.blobC = new Float32Array(nb * 4);
     this.lampData = new Float32Array(n * 4 * 2);
     this.on = new Uint8Array(n);
     this.bulb = new Float32Array(n);
@@ -109,6 +111,8 @@ export class LampWall {
       const active = b < n ? 1 : 0;
       this.respawn[base + b] = 0;
       this.blobPhase[base + b] = rand() * Math.PI * 2;
+      this.blobC[k] = active ? (rand() - 0.5) * 0.7 : 0;
+      this.blobC[k + 1] = 0;
 
       if (!active) {
         this.targetR[base + b] = 0.05 * params.blobSize;

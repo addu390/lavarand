@@ -31,7 +31,15 @@ export class Sidebar {
 
   constructor(root: HTMLElement) {
     root.innerHTML = `
-      <section class="panel">
+      <header class="nameplate shell">
+        <h1>LAVARAND WALL</h1>
+        <div class="ticker lcd">
+          <div class="ticker-inner">
+            <span>simulated lava lamps &rarr; camera &rarr; SHA-256 &rarr; randomness &middot;&nbsp;</span><span>simulated lava lamps &rarr; camera &rarr; SHA-256 &rarr; randomness &middot;&nbsp;</span>
+          </div>
+        </div>
+      </header>
+      <section class="panel shell">
         <h2>Camera</h2>
         <div class="panel-body cam-wrap">
           <canvas class="thumb" width="288" height="162"></canvas>
@@ -39,14 +47,14 @@ export class Sidebar {
           <div class="countdown"><div class="countdown-fill"></div></div>
         </div>
       </section>
-      <section class="panel">
+      <section class="panel shell">
         <h2>Latest digest <span class="mix-count"></span></h2>
         <div class="panel-body">
           <div class="digest">awaiting first capture&hellip;</div>
           <div class="history"></div>
         </div>
       </section>
-      <section class="panel">
+      <section class="panel shell">
         <h2>Derived randomness</h2>
         <div class="panel-body">
           <div class="outputs">
@@ -58,7 +66,7 @@ export class Sidebar {
           <p class="hint">click a value to copy</p>
         </div>
       </section>
-      <section class="panel">
+      <section class="panel shell">
         <h2>Entropy sources</h2>
         <div class="panel-body sources"></div>
       </section>

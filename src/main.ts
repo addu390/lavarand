@@ -59,7 +59,62 @@ function setHero(lamp: number): void {
   heroLamp = lamp;
   camTarget = lamp >= 0 ? heroCam(lamp) : wallCam();
   heroHint.hidden = lamp < 0;
+  heroRot = 0;
+  heroRotVel = 0;
+  canvas.classList.toggle("grab", lamp >= 0);
 }
+
+const MAX_ROT = 2.4;
+let heroRot = 0;
+let heroRotVel = 0;
+let dragging = false;
+let dragMoved = false;
+let dragStartX = 0;
+let dragLastX = 0;
+let dragLastT = 0;
+
+canvas.addEventListener("pointerdown", (e) => {
+  if (heroLamp < 0) return;
+  dragging = true;
+  dragMoved = false;
+  dragStartX = e.clientX;
+  dragLastX = e.clientX;
+  dragLastT = performance.now();
+  heroRotVel = 0;
+  canvas.classList.add("grabbing");
+  canvas.setPointerCapture(e.pointerId);
+});
+
+canvas.addEventListener("pointermove", (e) => {
+  if (!dragging) return;
+  const dx = e.clientX - dragLastX;
+  const now = performance.now();
+  const dtms = Math.max(now - dragLastT, 1);
+  if (Math.abs(e.clientX - dragStartX) > 5) dragMoved = true;
+  if (Math.abs(dx) > 0) {
+    let dRot = dx * 0.011;
+    const over = Math.abs(heroRot) / MAX_ROT;
+    if (over > 0.85 && Math.sign(dRot) === Math.sign(heroRot)) {
+      dRot *= Math.max(1 - (over - 0.85) / 0.15, 0.1);
+    }
+    heroRot = Math.min(MAX_ROT, Math.max(-MAX_ROT, heroRot + dRot));
+    const inst = (dRot / dtms) * 1000;
+    heroRotVel = heroRotVel * 0.6 + inst * 0.4;
+  }
+  dragLastX = e.clientX;
+  dragLastT = now;
+});
+
+const endDrag = (e: PointerEvent) => {
+  if (!dragging) return;
+  dragging = false;
+  canvas.classList.remove("grabbing");
+  if (canvas.hasPointerCapture(e.pointerId)) {
+    canvas.releasePointerCapture(e.pointerId);
+  }
+};
+canvas.addEventListener("pointerup", endDrag);
+canvas.addEventListener("pointercancel", endDrag);
 
 const sidebar = new Sidebar(document.getElementById("sidebar")!);
 const entropyCam = new EntropyCamera(
@@ -141,6 +196,10 @@ function rebuildWall(): void {
 }
 
 canvas.addEventListener("click", (e) => {
+  if (dragMoved) {
+    dragMoved = false;
+    return;
+  }
   const rect = canvas.getBoundingClientRect();
   const px = (e.clientX - rect.left) / rect.width;
   const py = 1 - (e.clientY - rect.top) / rect.height;
@@ -219,6 +278,15 @@ function frame(now: number): void {
     admin.setFastForwarding(false);
   }
 
+  if (!dragging && heroLamp >= 0 && Math.abs(heroRotVel) > 1e-4) {
+    heroRot += heroRotVel * dt;
+    heroRotVel *= Math.exp(-dt * 3.2);
+    if (heroRot >= MAX_ROT || heroRot <= -MAX_ROT) {
+      heroRot = Math.min(MAX_ROT, Math.max(-MAX_ROT, heroRot));
+      heroRotVel *= -0.25;
+    }
+  }
+
   const k = 1 - Math.exp(-dt * 6);
   cam.x += (camTarget.x - cam.x) * k;
   cam.y += (camTarget.y - cam.y) * k;
@@ -233,6 +301,8 @@ function frame(now: number): void {
     detail,
     glow: params.glow,
     light: params.mode === "light" ? 1 : 0,
+    rot: heroRot,
+    hero: heroLamp,
   });
   entropyCam.afterRender(now);
 
@@ -253,5 +323,11 @@ Object.assign(window as never, {
     },
     setHero,
     MAX_BLOBS,
+    get rot() {
+      return heroRot;
+    },
+    get hero() {
+      return heroLamp;
+    },
   },
 });

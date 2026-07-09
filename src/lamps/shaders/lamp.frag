@@ -11,7 +11,10 @@ uniform float uGlow;
 uniform float uLight;
 uniform sampler2D uBlobA;
 uniform sampler2D uBlobB;
+uniform sampler2D uBlobC;
 uniform sampler2D uLamp;
+uniform float uRot;
+uniform int uHero;
 
 out vec4 fragColor;
 
@@ -135,6 +138,10 @@ void main() {
     vec3 liquidCol = lamp2.rgb;
     float bulbLit = lamp2.a;
 
+    float rot = lampIdx == uHero ? uRot : 0.0;
+    float rotCa = cos(rot);
+    float rotSa = sin(rot);
+
     vec3 waxCore = hsv2rgb(vec3(hue, 0.72, 1.05));
     vec3 waxMid  = hsv2rgb(vec3(hue, 0.88, 0.92));
     vec3 waxRim  = hsv2rgb(vec3(hue, 0.95, 0.55));
@@ -191,15 +198,20 @@ void main() {
           vec2 qs = vec2(q.x * lens, q.y);
           float f = 0.0;
           float hsum = 0.0;
+          float dsum = 0.0;
           for (int b = 0; b < MAX_BLOBS; b++) {
             vec4 ba = texelFetch(uBlobA, ivec2(b, lampIdx), 0);
             vec4 bb = texelFetch(uBlobB, ivec2(b, lampIdx), 0);
+            float bz0 = texelFetch(uBlobC, ivec2(b, lampIdx), 0).x;
             float act = bb.z;
-            float rq = ba.z * INT_SPAN;
+            float bx = ba.x * rotCa + bz0 * rotSa;
+            float bz = bz0 * rotCa - ba.x * rotSa;
+            float near = bz * 0.5 + 0.5;
+            float rq = ba.z * INT_SPAN * (0.93 + 0.11 * near);
             vec2 bq;
             bq.y = INT_BOT + ba.y * INT_SPAN;
             float avail = max(lampHalfW(bq.y) - GLASS_T - 0.006 - rq * 0.55, 0.012);
-            bq.x = ba.x * avail;
+            bq.x = bx * avail;
             vec2 d = qs - bq;
             float e = clamp(bb.y * 1.1, -0.15, 0.35);
             d.y /= (1.0 + 0.1 * max(e, 0.0));
@@ -208,8 +220,10 @@ void main() {
             c *= c;
             f += c;
             hsum += c * ba.w;
+            dsum += c * near;
           }
           float heatL = hsum / max(f, 1e-4);
+          float depthL = dsum / max(f, 1e-4);
           float aa = max(fwidth(f) * 0.9, 0.04);
           float wax = ss(0.42 - aa, 0.42 + aa, f);
 
@@ -228,6 +242,10 @@ void main() {
             vec3 shaded = waxBody * diff;
             shaded += waxCore * back * 0.16;
             shaded += vec3(1.0) * spec * 0.05 * (1.0 - 0.7 * uLight);
+
+            float far = 1.0 - clamp(depthL, 0.0, 1.0);
+            shaded *= mix(1.03, 0.78, far);
+            shaded = mix(shaded, shaded * (0.4 + liquidCol * 1.2), 0.28 * far);
 
             float light = (0.92 + 0.08 * glowAmt) * lit;
             lampCol = mix(lampCol, shaded * light, wax);
@@ -261,25 +279,31 @@ void main() {
           lampCol += waxMid * glowAmt * 0.35 *
                      exp(-(BASE_TOP - q.y) * 22.0) * (1.0 - m * 0.6);
 
-          vec2 sp = q - vec2(0.058, 0.330);
-          float housing = sdRoundBox(sp, vec2(0.0135, 0.027), 0.005);
-          float hMask = 1.0 - ss(0.0, 0.0025, housing);
-          if (hMask > 0.0) {
-            vec3 swCol = vec3(0.07);
-            float well = sdRoundBox(sp, vec2(0.0095, 0.022), 0.004);
-            float wMask = 1.0 - ss(0.0, 0.002, well);
-            swCol = mix(swCol, vec3(0.025), wMask);
+          float swTh = 0.74 + rot;
+          float swFace = cos(swTh);
+          if (swFace > 0.05) {
+            vec2 sp = q - vec2(0.086 * sin(swTh), 0.330);
+            sp.x /= max(swFace, 0.25);
+            float housing = sdRoundBox(sp, vec2(0.0135, 0.027), 0.005);
+            float hMask = 1.0 - ss(0.0, 0.0025, housing);
+            if (hMask > 0.0) {
+              vec3 swCol = vec3(0.07);
+              float well = sdRoundBox(sp, vec2(0.0095, 0.022), 0.004);
+              float wMask = 1.0 - ss(0.0, 0.002, well);
+              swCol = mix(swCol, vec3(0.025), wMask);
 
-            float dir = switchedOn * 2.0 - 1.0;
-            vec2 rp = sp - vec2(0.0, dir * 0.0105);
-            float rocker = sdRoundBox(rp, vec2(0.008, 0.0115), 0.003);
-            float rMask = 1.0 - ss(0.0, 0.0018, rocker);
-            float tilt = ss(-0.012, 0.012, rp.y * dir);
-            vec3 rockCol = vec3(0.13 + 0.17 * tilt);
-            rockCol += vec3(0.12) * exp(-pow((rp.y - dir * 0.008) * 220.0, 2.0));
-            swCol = mix(swCol, rockCol, rMask);
+              float dir = switchedOn * 2.0 - 1.0;
+              vec2 rp = sp - vec2(0.0, dir * 0.0105);
+              float rocker = sdRoundBox(rp, vec2(0.008, 0.0115), 0.003);
+              float rMask = 1.0 - ss(0.0, 0.0018, rocker);
+              float tilt = ss(-0.012, 0.012, rp.y * dir);
+              vec3 rockCol = vec3(0.13 + 0.17 * tilt);
+              rockCol +=
+                  vec3(0.12) * exp(-pow((rp.y - dir * 0.008) * 220.0, 2.0));
+              swCol = mix(swCol, rockCol, rMask);
 
-            lampCol = mix(lampCol, swCol, hMask);
+              lampCol = mix(lampCol, swCol, hMask * ss(0.05, 0.35, swFace));
+            }
           }
         } else {
           lampCol += waxMid * glowAmt * 0.12 *

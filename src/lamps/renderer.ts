@@ -16,6 +16,8 @@ export interface RenderState {
   glow: number;
 
   light: number;
+  rot: number;
+  hero: number;
 }
 
 export class Renderer {
@@ -25,6 +27,7 @@ export class Renderer {
   private uniforms: Record<string, WebGLUniformLocation | null> = {};
   private texBlobA: WebGLTexture;
   private texBlobB: WebGLTexture;
+  private texBlobC: WebGLTexture;
   private texLamp: WebGLTexture;
   private allocLamps = 0;
   private pixelBuf: Uint8Array | null = null;
@@ -51,18 +54,23 @@ export class Renderer {
       "uDetail",
       "uGlow",
       "uLight",
+      "uRot",
+      "uHero",
       "uBlobA",
       "uBlobB",
+      "uBlobC",
       "uLamp",
     ]) {
       this.uniforms[name] = gl.getUniformLocation(this.program, name);
     }
     gl.uniform1i(this.uniforms.uBlobA, 0);
     gl.uniform1i(this.uniforms.uBlobB, 1);
+    gl.uniform1i(this.uniforms.uBlobC, 3);
     gl.uniform1i(this.uniforms.uLamp, 2);
 
     this.texBlobA = this.makeDataTexture();
     this.texBlobB = this.makeDataTexture();
+    this.texBlobC = this.makeDataTexture();
     this.texLamp = this.makeDataTexture();
     this.resize();
   }
@@ -158,6 +166,7 @@ export class Renderer {
     const realloc = wall.count !== this.allocLamps;
     upload(this.texBlobA, 0, MAX_BLOBS, wall.count, wall.blobA, realloc);
     upload(this.texBlobB, 1, MAX_BLOBS, wall.count, wall.blobB, realloc);
+    upload(this.texBlobC, 3, MAX_BLOBS, wall.count, wall.blobC, realloc);
     upload(this.texLamp, 2, wall.count, 2, wall.lampData, realloc);
     this.allocLamps = wall.count;
 
@@ -173,6 +182,8 @@ export class Renderer {
     gl.uniform1f(this.uniforms.uDetail, s.detail);
     gl.uniform1f(this.uniforms.uGlow, s.glow);
     gl.uniform1f(this.uniforms.uLight, s.light);
+    gl.uniform1f(this.uniforms.uRot, s.rot);
+    gl.uniform1i(this.uniforms.uHero, s.hero);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
