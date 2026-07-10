@@ -5,7 +5,6 @@ export interface PublishedOutputs {
   uuid: string;
   d20: number;
   coins: string;
-  password: string;
   mixes: number;
 }
 
@@ -31,44 +30,56 @@ export class Sidebar {
 
   constructor(root: HTMLElement) {
     root.innerHTML = `
-      <header class="nameplate shell">
-        <h1>LAVARAND WALL</h1>
-        <div class="ticker lcd">
-          <div class="ticker-inner">
-            <span>simulated lava lamps &rarr; camera &rarr; SHA-256 &rarr; randomness &middot;&nbsp;</span><span>simulated lava lamps &rarr; camera &rarr; SHA-256 &rarr; randomness &middot;&nbsp;</span>
+      <section class="panel shell" id="pw-panel">
+        <h2>Password generator</h2>
+        <div class="panel-body">
+          <div class="pw-out lcd" title="click to copy"><span class="pw-text">&mdash;</span></div>
+          <div class="pw-meta">
+            <div class="pw-meter"><div class="pw-meter-fill"></div></div>
+            <span class="pw-strength">&mdash;</span>
+            <span class="pw-info">&mdash;</span>
           </div>
+          <label class="knob">
+            <span class="knob-label">Length</span>
+            <div class="dual single">
+              <div class="dual-track"><div class="dual-fill"></div></div>
+              <input class="pw-len" type="range" min="8" max="64" step="1" value="18">
+            </div>
+            <span class="knob-val">18</span>
+          </label>
+          <div class="pw-toggles">
+            <label class="knob toggle"><span class="knob-label">Uppercase</span><input type="checkbox" data-set="upper" checked></label>
+            <label class="knob toggle"><span class="knob-label">Lowercase</span><input type="checkbox" data-set="lower" checked></label>
+            <label class="knob toggle"><span class="knob-label">Numbers</span><input type="checkbox" data-set="num" checked></label>
+            <label class="knob toggle"><span class="knob-label">Symbols</span><input type="checkbox" data-set="sym" checked></label>
+            <label class="knob toggle"><span class="knob-label">Easy to read</span><input type="checkbox" data-set="easy"></label>
+            <label class="knob toggle"><span class="knob-label">Fresh capture</span><input type="checkbox" class="pw-cap" checked></label>
+          </div>
+          <button class="pw-gen">Generate</button>
         </div>
-      </header>
+      </section>
       <section class="panel shell">
         <h2>Camera</h2>
-        <div class="panel-body cam-wrap">
-          <canvas class="thumb" width="288" height="162"></canvas>
-          <div class="cam-paused" hidden>capture paused</div>
-          <div class="countdown"><div class="countdown-fill"></div></div>
+        <div class="panel-body">
+          <div class="cam-wrap">
+            <canvas class="thumb" width="288" height="162"></canvas>
+            <div class="cam-paused" hidden>capture paused</div>
+            <div class="countdown"><div class="countdown-fill"></div></div>
+          </div>
+          <div class="sources"></div>
         </div>
       </section>
-      <section class="panel shell">
-        <h2>Latest digest <span class="mix-count"></span></h2>
+      <section class="panel shell peek collapsed empty">
+        <h2>Capture outputs <span class="mix-count"></span></h2>
+        <div class="digest">awaiting first capture&hellip;</div>
+        <div class="outputs">
+          <div class="out-row"><span class="out-label">UUID</span><span class="out-val" data-k="uuid">&mdash;</span></div>
+          <div class="out-row"><span class="out-label">d20 roll</span><span class="out-val" data-k="d20">&mdash;</span></div>
+          <div class="out-row"><span class="out-label">8 coins</span><span class="out-val" data-k="coins">&mdash;</span></div>
+        </div>
         <div class="panel-body">
-          <div class="digest">awaiting first capture&hellip;</div>
           <div class="history"></div>
         </div>
-      </section>
-      <section class="panel shell">
-        <h2>Derived randomness</h2>
-        <div class="panel-body">
-          <div class="outputs">
-            <div class="out-row"><span class="out-label">UUID</span><span class="out-val" data-k="uuid">&mdash;</span></div>
-            <div class="out-row"><span class="out-label">d20 roll</span><span class="out-val" data-k="d20">&mdash;</span></div>
-            <div class="out-row"><span class="out-label">8 coins</span><span class="out-val" data-k="coins">&mdash;</span></div>
-            <div class="out-row"><span class="out-label">Password</span><span class="out-val" data-k="password">&mdash;</span></div>
-          </div>
-          <p class="hint">click a value to copy</p>
-        </div>
-      </section>
-      <section class="panel shell">
-        <h2>Entropy sources</h2>
-        <div class="panel-body sources"></div>
       </section>
     `;
 
@@ -140,6 +151,7 @@ export class Sidebar {
     ) {
       this.history.unshift(this.digestEl.textContent);
       this.history = this.history.slice(0, 6);
+      this.digestEl.closest(".panel")!.classList.remove("empty");
       this.historyEl.innerHTML = this.history
         .map((h) => `<div class="hist-row">${h}</div>`)
         .join("");
@@ -152,6 +164,5 @@ export class Sidebar {
     set("uuid", o.uuid);
     set("d20", String(o.d20));
     set("coins", o.coins);
-    set("password", o.password);
   }
 }

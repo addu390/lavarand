@@ -6,6 +6,7 @@ import { Renderer, type Camera } from "./lamps/renderer";
 import { EntropyCamera } from "./entropy/camera";
 import { FrameJitterSource, attachMouseSource } from "./entropy/sources";
 import { Sidebar } from "./ui/sidebar";
+import { PasswordPanel } from "./ui/password";
 import { AdminPanel } from "./ui/admin";
 import { initDock } from "./ui/dock";
 
@@ -119,6 +120,9 @@ const entropyCam = new EntropyCamera(
   document.getElementById("flash")!,
 );
 entropyCam.pool.onMix = (label) => sidebar.blip(label);
+new PasswordPanel(document.getElementById("pw-panel")!, entropyCam.pool, () =>
+  entropyCam.captureAndWait(),
+);
 const jitter = new FrameJitterSource(entropyCam.pool, params);
 attachMouseSource(entropyCam.pool, params);
 

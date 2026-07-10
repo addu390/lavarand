@@ -67,15 +67,3 @@ export function toCoins(bytes: Uint8Array, n: number): string {
   return s;
 }
 
-const PW_CHARS =
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*-_=+";
-
-export function toPassword(bytes: Uint8Array, len: number): string {
-  const limit = 256 - (256 % PW_CHARS.length);
-  let s = "";
-  for (const b of bytes) {
-    if (s.length >= len) break;
-    if (b < limit) s += PW_CHARS[b % PW_CHARS.length];
-  }
-  return s;
-}

@@ -1,6 +1,6 @@
 import type { Renderer } from "../lamps/renderer";
 import type { Params } from "../params";
-import { EntropyPool, toCoins, toDie, toHex, toPassword, toUuid } from "./pool";
+import { EntropyPool, toCoins, toDie, toHex, toUuid } from "./pool";
 import { mixCsprng } from "./sources";
 import type { Sidebar } from "../ui/sidebar";
 
@@ -9,6 +9,7 @@ export class EntropyCamera {
   private nextCapture = 0;
   private pending = false;
   private busy = false;
+  private waiters: (() => void)[] = [];
 
   constructor(
     private renderer: Renderer,
@@ -19,6 +20,11 @@ export class EntropyCamera {
 
   requestCapture(): void {
     this.pending = true;
+  }
+
+  captureAndWait(): Promise<void> {
+    this.pending = true;
+    return new Promise((resolve) => this.waiters.push(resolve));
   }
 
   afterRender(nowMs: number): void {
@@ -70,14 +76,14 @@ export class EntropyCamera {
       await mixCsprng(this.pool);
     }
 
-    const out = await this.pool.derive(96);
+    const out = await this.pool.derive(72);
     this.sidebar.publish({
       digest: toHex(out.subarray(0, 32)),
       uuid: toUuid(out.subarray(32, 48)),
       d20: toDie(out.subarray(48, 64), 20),
       coins: toCoins(out.subarray(64, 72), 8),
-      password: toPassword(out.subarray(72, 96), 18),
       mixes: this.pool.totalMixes,
     });
+    for (const resolve of this.waiters.splice(0)) resolve();
   }
 }
